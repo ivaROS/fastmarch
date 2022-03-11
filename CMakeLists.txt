@@ -35,8 +35,6 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
-  external_projects/fastmarch/include
-  external_projects/include
   ${OpenCV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
@@ -50,6 +48,10 @@ add_library(${PROJECT_NAME}
 add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #set_property(TARGET ego_circle_lib PROPERTY CXX_STANDARD 14)
 #target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
+target_include_directories(${PROJECT_NAME} PRIVATE 
+  external_projects/fastmarch/include
+  external_projects/include
+  )
 target_compile_definitions(${PROJECT_NAME} PRIVATE _MATRIX_ _DEBUG_ _IMFLOAT_ _INTERP_RI_  
   #_RESTRICT_  _USENB_ #These do not appear to do anything
   )
@@ -57,12 +59,33 @@ target_link_libraries(${PROJECT_NAME}
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
   )
+  
+  
+  
+
+add_library(${PROJECT_NAME}_dt 
+  src/dt_helper.cpp
+  )
+add_dependencies(${PROJECT_NAME}_dt ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#set_property(TARGET ego_circle_lib PROPERTY CXX_STANDARD 14)
+#target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
+target_include_directories(${PROJECT_NAME}_dt PRIVATE 
+  external_projects/dt
+  )
+target_link_libraries(${PROJECT_NAME}_dt 
+  ${OpenCV_LIBRARIES}
+  ${catkin_LIBRARIES}
+  )
+  
+  
+  
 
 add_executable(${PROJECT_NAME}_test
     src/test.cpp
   )
 target_link_libraries(${PROJECT_NAME}_test
   ${PROJECT_NAME}
+  ${PROJECT_NAME}_dt
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
   )
