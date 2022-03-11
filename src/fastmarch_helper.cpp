@@ -25,7 +25,9 @@ namespace fastmarching
  */
 
   FastMarchHelper::FastMarchHelper():
-    fmobj_(new fastmarch())
+    fmobj_(new fastmarch()),
+    mM(-1),
+    mN(-1)
   {
     
   }
@@ -49,15 +51,30 @@ namespace fastmarching
     return input;
   }
   
+  void FastMarchHelper::init(cv::Mat mat)
+  {
+    int m = mat.rows;
+    int n = mat.cols;
+    
+    if(m!=mM || n!=mN)  //Different size, need to initialize
+    {
+      if(mM!=-1 && mN!=-1)  //Already initialized, need to clear
+      {
+        fmobj_->free();
+      }
+      mM=m;
+      mN=n;
+      fmobj_->init(mM, mN);
+    }
+  }
+  
   
   cv::Mat FastMarchHelper::bwdist(cv::Mat binary_mask)
   {
-    mM = binary_mask.rows;
-    mN = binary_mask.cols;
+    init(binary_mask);
     
     binary_mask = convertMat(binary_mask > 0, CV_64F);
     
-    fmobj_->init(mM, mN);
     fmobj_->setSeedRegions((masktype*)binary_mask.data, mM, mN);
     fmobj_->forceRedistance();
     
@@ -66,12 +83,10 @@ namespace fastmarching
   
   cv::Mat FastMarchHelper::labelMarch(cv::Mat input_labels, cv::Mat* shockmap)
   {
-    mM = input_labels.rows;
-    mN = input_labels.cols;
-    
+    init(input_labels);
+
     input_labels = convertMat(input_labels, CV_32S);
     
-    fmobj_->init(mM, mN);
     fmobj_->setLabelRegions((labeltype *)input_labels.data, mM, mN);
     fmobj_->compLabels();
     
@@ -84,7 +99,7 @@ namespace fastmarching
   }
   
   
-  cv::Mat FastMarchHelper::getLabels()
+  cv::Mat FastMarchHelper::getLabels() const
   {
     int type = CV_32S;
     cv::Mat result_labels(mM, mN, type);
@@ -92,7 +107,7 @@ namespace fastmarching
     return result_labels;
   }
   
-  cv::Mat FastMarchHelper::getDistance()
+  cv::Mat FastMarchHelper::getDistance() const
   {
     int type = CV_32F;
     cv::Mat distance(mM, mN, type);
@@ -100,7 +115,7 @@ namespace fastmarching
     return distance;
   }
   
-  cv::Mat FastMarchHelper::getShockMap()
+  cv::Mat FastMarchHelper::getShockMap() const
   {
     int type = CV_8U;
     cv::Mat shockmap(mM, mN, type);
@@ -109,7 +124,7 @@ namespace fastmarching
   }
   
   
-  void FastMarchHelper::showDistance()
+  void FastMarchHelper::showDistance() const
   {
     cv::Mat distance = getDistance();
     cv::Mat distance_viz;
@@ -117,7 +132,7 @@ namespace fastmarching
     cv::imshow("distance", distance_viz);
   }
   
-  void FastMarchHelper::showLabels()
+  void FastMarchHelper::showLabels() const
   {
     cv::Mat result_labels = getLabels();
     cv::Mat result_labels_viz;

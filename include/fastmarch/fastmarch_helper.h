@@ -2,6 +2,7 @@
 #define FASTMARCH_FASTMARCH_HELPER_H
 
 #include <opencv2/core/mat.hpp>
+#include <opencv2/highgui.hpp>  //The visualization capabilities should be moved to a separate class
 
 class fastmarch;
 
@@ -22,19 +23,21 @@ namespace fastmarching
     
     ~FastMarchHelper();
     
+    void init(cv::Mat mat);
+    
     cv::Mat bwdist(cv::Mat binary_mask);
     
     cv::Mat labelMarch(cv::Mat input_labels, cv::Mat* shockmap=nullptr);
     
-    cv::Mat getLabels();
+    cv::Mat getLabels() const;
     
-    cv::Mat getDistance();
+    cv::Mat getDistance() const;
     
-    cv::Mat getShockMap();
+    cv::Mat getShockMap() const;
     
-    void showDistance();
+    void showDistance() const;
     
-    void showLabels();
+    void showLabels() const;
     
   };
 
