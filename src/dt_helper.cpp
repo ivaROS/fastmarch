@@ -39,7 +39,7 @@ namespace fastmarching
         }
       }
       
-      cv::Mat out_mat(mat.cols, mat.rows, CV_32F);
+      cv::Mat out_mat(mat.rows, mat.cols, CV_32F);
       std::memcpy(out_mat.data, out->data, mat.cols*mat.rows*sizeof(float));
       
       delete input;

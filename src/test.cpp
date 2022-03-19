@@ -7,8 +7,8 @@ int main(void)
 {
   fastmarching::FastMarchHelper fmh;
   int dim=11;
-  cv::Mat labels = cv::Mat::zeros(dim,dim,CV_32S);
-  labels.at<int>(dim/2,dim/2) = 1;
+  cv::Mat labels = cv::Mat::zeros(128,512,CV_32S);
+  labels.at<int>(64,256) = 1;
   //labels.at<int>(dim/2,dim/2+1) = 2;
 
   fmh.bwdist(labels);

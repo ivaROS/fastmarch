@@ -23,7 +23,7 @@ find_package(OpenCV REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
+  LIBRARIES ${PROJECT_NAME} ${PROJECT_NAME}_dt
   CATKIN_DEPENDS
 )
 
@@ -89,3 +89,26 @@ target_link_libraries(${PROJECT_NAME}_test
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
   )
+
+
+
+add_executable(${PROJECT_NAME}_stest
+    src/stest.cpp
+  )
+# target_link_libraries(${PROJECT_NAME}_stest
+#   ${PROJECT_NAME}
+#   ${PROJECT_NAME}_dt
+#   ${OpenCV_LIBRARIES}
+#   ${catkin_LIBRARIES}
+#   )
+#   
+target_include_directories(${PROJECT_NAME}_stest PRIVATE 
+  external_projects/dt/dt
+  )
+target_link_libraries(${PROJECT_NAME}_stest
+  ${PROJECT_NAME}_dt
+  ${OpenCV_LIBRARIES}
+  ${catkin_LIBRARIES}
+  )
+  
+  
