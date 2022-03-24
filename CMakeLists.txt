@@ -105,6 +105,9 @@ add_executable(${PROJECT_NAME}_stest
 target_include_directories(${PROJECT_NAME}_stest PRIVATE 
   external_projects/dt/dt
   )
+target_compile_options(${PROJECT_NAME}_stest PRIVATE
+ -march=native -O3 -ftree-vectorize -fopt-info-vec-all=vectorized.txt #-fassociative-math -fno-signed-zeros -fno-trapping-math  -fno-signaling-nans -ffast-math 
+ ) 
 target_link_libraries(${PROJECT_NAME}_stest
   ${PROJECT_NAME}_dt
   ${OpenCV_LIBRARIES}

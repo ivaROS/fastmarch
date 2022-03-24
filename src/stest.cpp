@@ -348,10 +348,10 @@ void dt_mine(ArrayAccessor<float>& f)
       {
         cv = 1;  //Reset distance
       }
-      else
-      {
-        cv = pv-1;  //Increment negative distance
-      }
+//       else
+//       {
+//         cv = pv-1;  //Increment negative distance
+//       }
     }
   }
   
@@ -378,10 +378,10 @@ void dt_mine(ArrayAccessor<float>& f)
       {
         cv = 1;  //Reset distance
       }
-      else
-      {
-        cv = std::max(cv, pv-1);  //the lesser of left and right (negative) distances
-      }
+//       else
+//       {
+//         cv = std::max(cv, pv-1);  //the lesser of left and right (negative) distances
+//       }
     }
   }
 }
@@ -423,21 +423,62 @@ void dt(ArrayAccessor<float>& f, ArrayAccessor<float>& d)
 
 void getSqrt(MatAccessorInterface<float>& in, MatAccessorInterface<float>& out)
 {
-  const cv::Mat& img = in.getMat();
-//   if(img.isContinuous())
-//   {
-//     
-//   }
-//   else
+  const cv::Mat& img_in = in.getMat();
+  const cv::Mat& img_out = out.getMat();
+  
+  if(img_in.isContinuous() && img_out.isContinuous())
+  {
+    float* data_in = (float*)img_in.data;
+    float* data_out = (float*)img_out.data;
+    
+    for(int i = 0; i < img_in.rows*img_in.cols; i++)
+    {
+      data_out[i] = std::sqrt(data_in[i]);
+    }
+  }
+  else
   {
 
-    for(int i = 0; i < img.rows; i++)
+    for(int i = 0; i < img_in.rows; i++)
     {
       auto row_in = in.row(i);
       auto row_out = out.row(i);
-      for(int j = 0; j < img.cols; j++)
+      for(int j = 0; j < img_in.cols; j++)
       {
         row_out[j] = std::sqrt(row_in[j]);
+      }
+    }
+  }
+}
+
+
+void getSqrd(MatAccessorInterface<float>& in, MatAccessorInterface<float>& out)
+{
+  const cv::Mat& img_in = in.getMat();
+  const cv::Mat& img_out = out.getMat();
+  
+  if(img_in.isContinuous() && img_out.isContinuous())
+  {
+    float* data_in = (float*)img_in.data;
+    float* data_out = (float*)img_out.data;
+    
+    for(int i = 0; i < img_in.rows*img_in.cols; i++)
+    {
+      auto v = data_in[i];
+      data_out[i] = v*v;
+    }
+  }
+  else
+  {
+
+    for(int i = 0; i < img_in.rows; i++)
+    {
+      auto row_in = in.row(i);
+      auto row_out = out.row(i);
+      for(int j = 0; j < img_in.cols; j++)
+      {
+        auto v = row_in[j];
+        row_out[j] = v*v;
       }
     }
   }
@@ -481,6 +522,22 @@ public:
 
     delete [] v;
     delete [] z;
+  }
+  
+  static void initialize(MatAccessorInterface<float>& img, MatAccessorInterface<float>& prepped)
+  {
+    cv::Mat image = img.getMat();
+    //initialize distances of occupied points to 0 and the rest to a big number
+    for(int i = 0; i < image.rows; i++)
+    {
+      auto row_in = img.row(i);
+      auto row_out = prepped.row(i);
+      for(int j = 0; j < image.cols; j++)
+      {
+        float v = (row_in[j]==0) ? INF : 0;
+        row_out[j] = v;
+      }
+    }
   }
 };
 
@@ -617,8 +674,100 @@ public:
   {
     return helper_.run(image);
   }
+};
 
+class InPlaceMine : public DTApproach
+{
+public:
+  cv::Mat dt(cv::Mat image) override
+  {
+    MatAccessorInterface<float> img(image);
+    MatAccessorInterface<float> prepped(image.clone());
+
+    //initialize distances of occupied points to 0 and the rest to a big number
+    for(int i = 0; i < image.rows; i++)
+    {
+      auto row_in = img.row(i);
+      auto row_out = prepped.row(i);
+      for(int j = 0; j < image.cols; j++)
+      {
+        float v = (row_in[j]==0) ? INF : 0;
+        row_out[j] = v;
+      }
+    }
+    
+    //Transform rows
+    for(int i = 0; i < image.rows; i++)
+    {
+      auto row_in = prepped.row(i);
+      dt_mine(row_in);
+    }
+    getSqrd(prepped, prepped);
+    
+    
+    //Transform columns
+    for(int j = 0; j < image.cols; j++)
+    {
+      auto col_in = prepped.col(j);
+      DTApproach::dt(col_in, col_in);
+    }
+    
+    getSqrt(prepped,prepped);
+    
+    return prepped.getMat();
+  }
+};
+
+class OutPlaceIntermediate : public DTApproach
+{
+public:
   
+  cv::Mat prepped_mat_, rows_mat_, cols_mat_, final_mat_;
+  
+  cv::Mat dt(cv::Mat image) override
+  {
+    MatAccessorInterface<float> img(image);
+    prepped_mat_ = image.clone();
+    MatAccessorInterface<float> prepped(prepped_mat_);
+
+    //initialize distances of occupied points to 0 and the rest to a big number
+    for(int i = 0; i < image.rows; i++)
+    {
+      auto row_in = img.row(i);
+      auto row_out = prepped.row(i);
+      for(int j = 0; j < image.cols; j++)
+      {
+        float v = (row_in[j]==0) ? INF : 0;
+        row_out[j] = v;
+      }
+    }
+    
+    //Transform rows
+    rows_mat_ = image.clone();
+    MatAccessorInterface<float> rows(rows_mat_);
+    for(int i = 0; i < image.rows; i++)
+    {
+      auto row_in = prepped.row(i);
+      auto row_out = rows.row(i);
+      DTApproach::dt(row_in, row_out);
+    }
+    
+    //Transform columns
+    cols_mat_ = image.clone();
+    MatAccessorInterface<float> out(cols_mat_);
+    for(int j = 0; j < image.cols; j++)
+    {
+      auto col_in = rows.col(j);
+      auto col_out = out.col(j);
+      DTApproach::dt(col_in, col_out);
+    }
+    
+    final_mat_ = image.clone();
+    MatAccessorInterface<float> sqrted(final_mat_);
+    getSqrt(out,sqrted);
+    
+    return sqrted.getMat();
+  }
 };
 
 cv::Mat accessorOPDT(cv::Mat image)
@@ -698,12 +847,25 @@ public:
     name_(name)
   {}
   
-  void runTest(cv::Mat image)
+  void runTest(cv::Mat image, int num_tests)
   {
     auto t1 = std::chrono::high_resolution_clock::now();
-    result_ = approach_->dt(image);
+    for(int i = 0; i < num_tests; i++)
+    {
+      result_ = approach_->dt(image);
+    }
     auto t2 = std::chrono::high_resolution_clock::now();
     ttime_ = t2 - t1;
+  }
+  
+  cv::Mat getResult()
+  {
+    return result_;
+  }
+  
+  std::string getName()
+  {
+    return name_;
   }
   
   void printTime()
@@ -738,27 +900,39 @@ void compareInOutPlace(cv::Mat image)
   TypedApproachTester<OutPlaceStandard> opt("out-of-place");
   TypedApproachTester<DTHelperApproach> dth("first-try");
   TypedApproachTester<InPlaceReversed> iprt("in-place-reversed");
+  TypedApproachTester<InPlaceReversed> ipm("in-place-mine");
 
-  std::vector<ApproachTester*> tests = {&ipt, &opt, &dth, &iprt};
+  std::vector<ApproachTester*> tests = {&dth, &ipt, &opt, &iprt, &ipm};
+  int num_tests = 100;
   
-  for(int i = 0; i < 20; i++)
+  for(auto test : tests)
   {
-    for(auto test : tests)
-    {
-      test->runTest(image);
-    }
-    
-    for(auto test : tests)
-    {
-      test->printTime();
-    }
+    test->runTest(image, num_tests);
+    test->printTime();
   }
   
   for(auto test : tests)
   {
     test->showResult();
   }
-
+  
+  //Make sure results are identical
+  {
+    cv::Mat ref = tests.front()->getResult();
+    for(int i = 1; i < tests.size(); i++)
+    {
+      cv::Mat res = tests[i]->getResult();
+      bool eq = (cv::countNonZero(ref!=res) == 0);
+      if(eq)
+      {
+        std::cout << tests[i]->getName() << ": Passed!\n";
+      }
+      else
+      {
+        std::cout << tests[i]->getName() << ": Failed!\n";
+      }
+    }
+  }
   //InPlaceStandard ip;
   //OutPlaceStandard op;
   
@@ -800,10 +974,86 @@ void test1()
 
 
 
+void test2()
+{
+  cv::Mat input = cv::Mat::zeros(9,9,CV_32FC1);
+  input.at<float>(4,4) = 1;
+  
+  OutPlaceIntermediate app;
+  app.dt(input);
+  
+  std::cout << "Input:\n" << input << 
+  "\nInitialized:\n" << app.prepped_mat_ << 
+  "\nRow-wise:\n" << app.rows_mat_ << 
+  "\nCol-wise:\n" << app.cols_mat_ <<
+  "\nSqrted:\n" << app.final_mat_ <<
+  "\n";
+
+  
+//   cv::Mat result = accessorOPDT(input);
+//   cv::Mat result_viz;
+//   cv::normalize(result, result_viz, 1, 0, cv::NORM_INF);
+//   
+   cv::imshow("input", input);
+//   cv::imshow("result", result_viz);
+}
+
+
+void test3()
+{
+  cv::Mat input = cv::Mat::zeros(9,9,CV_32FC1);
+  
+  for(int i = 4; i <=6; i++)
+  {
+    for(int j = 3; j <=5; j++)
+    {
+      input.at<float>(i,j)=1;
+    }
+  }
+  
+  {
+    int i = 1;
+    for(int j = 4; j <=7; j++)
+    {
+      input.at<float>(i,j)=1;
+    }
+  }
+  
+  {
+    int j = 1;
+    for(int i = 2; i <=6; i++)
+    {
+      input.at<float>(i,j)=1;
+    }
+  }
+  
+  OutPlaceIntermediate app;
+  app.dt(input);
+  
+  std::cout << "Input:\n" << input << 
+  "\nInitialized:\n" << app.prepped_mat_ << 
+  "\nRow-wise:\n" << app.rows_mat_ << 
+  "\nCol-wise:\n" << app.cols_mat_ <<
+  "\nSqrted:\n" << app.final_mat_ <<
+  "\n";
+
+  
+//   cv::Mat result = accessorOPDT(input);
+//   cv::Mat result_viz;
+//   cv::normalize(result, result_viz, 1, 0, cv::NORM_INF);
+//   
+   cv::imshow("input", input);
+//   cv::imshow("result", result_viz);
+}
+
+
+
 int main(void)
 {
   test0();
   test1();
+  test2();
+  test3();
   
   cv::waitKey();
 
